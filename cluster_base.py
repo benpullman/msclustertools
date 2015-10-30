@@ -34,12 +34,18 @@ class Cluster(SpectrumBase):
     """Class for individual cluster."""
 
     def __init__(self, scan_number, file_id, precursor_mz, charge, spectra,
-                 purity, consensus_peptide):
+                 purity, consensus_peptide, sqs = 0, ms_cluster_charge = None,
+                 spec_prob = None, p_value = None, fdr = None, pep_fdr = None):
         self.spectra = spectra
         self.purity = purity
         self.consensus_peptide = consensus_peptide
         self.sqs = 0
         self.spectrum_weights = self.set_spectrum_weights()
+        self.ms_cluster_charge = ms_cluster_charge
+        self.spec_prob = spec_prob
+        self.p_value = p_value
+        self.fdr = fdr
+        self.pep_fdr = pep_fdr
         super(Cluster, self).__init__(scan_number, file_id, precursor_mz, charge)
     def avg_spectra_sqs(self):
             output = 0.0
@@ -69,12 +75,16 @@ class Spectrum(SpectrumBase):
     """Class for individual spectrum (or cluster solely for SQS)."""
 
     def __init__(self, scan_number, file_id, precursor_mz, charge, similarity,
-                 p_value, sqs, peptide, cluster_number = None):
+                 p_value, sqs, peptide, cluster_number = None, spec_prob = None,
+                 fdr = None, pep_fdr = None):
         self.similarity = similarity
         self.p_value = p_value
         self.sqs = sqs
         self.peptide = peptide
         self.cluster_number = cluster_number
+        self.spec_prob = spec_prob
+        self.fdr = fdr
+        self.pep_fdr = pep_fdr
         super(Spectrum, self).__init__(scan_number, file_id, precursor_mz, charge)
     def output_pair(self):
         return str(self.file_id) + ":" + str(self.scan_number) + ":" + str(self.sqs) + ":" + str(self.charge) + ":" + str(self.precursor_mz)
@@ -441,6 +451,50 @@ def find_cluster(clusters, cluster_id):
             found_cluster = cluster
             break
     return found_cluster
+
+def initialize_from_proteosafe(clusters_file, spectra_file):
+    clusters = {}
+    with open(clusters_file, 'r') as cluster_lines:
+        cluster_lines.readline()
+        for cluster_line in cluster_lines:
+            clust_split = cluster_line.split('\t')
+            scan_number = clust_split[2]
+            new_cluster = Cluster(
+                scan_number = scan_number,
+                file_id = clust_split[0],
+                precursor_mz = clust_split[3],
+                charge = int(clust_split[6].replace('+','')),
+                spectra = [],
+                purity = None,
+                consensus_peptide = clust_split[7],
+                ms_cluster_charge = clust_split[21],
+                spec_prob = clust_split[11],
+                p_value = clust_split[12],
+                fdr = clust_split[13],
+                pep_fdr = clust_split[14]
+            )
+            clusters[scan_number] = new_cluster
+    with open(spectra_file, 'r') as spectrum_lines:
+        spectrum_lines.readline()
+        for spectrum_line in spectrum_lines:
+            spec_split = spectrum_line.split('\t')
+            cluster_number = spec_split[15]
+            new_spectrum = Spectrum(
+                scan_number = spec_split[2],
+                file_id = spec_split[0],
+                precursor_mz = spec_split[4],
+                charge = int(spec_split[6]),
+                similarity = None,
+                p_value = spec_split[12],
+                sqs = spec_split[16],
+                peptide = spec_split[7],
+                cluster_number = cluster_number,
+                spec_prob = spec_split[11],
+                fdr = spec_split[13],
+                pep_fdr = spec_split[14]
+            )
+            clusters[cluster_number].spectra.append(new_spectrum)
+    return clusters
 #
 # def load_to_pickle(cluster_folder, clusters_clusters_folder, identified_clusters,
 #                    identified_spectra, output_pickle, title_prefix):

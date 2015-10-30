@@ -85,9 +85,9 @@ class parseMGF(object):
         self.cluster_size = None
         self.purity = None
         self.mix_score = None
-        self.assigned_charge = None
+        #self.assigned_charge = None
     def as_array(self):
-        return [str(self.cluster_size), str(self.purity.purity_no_undentified), str(self.purity.representative_spectrum), str(self.cluster_sqs),str(self.avg_spectra_sqs),str(self.mix_score),str(self.assigned_charge),str(self.spectra)]
+        return [str(self.cluster_size), str(self.purity.purity_no_undentified), str(self.purity.representative_spectrum), str(self.cluster_sqs),str(self.avg_spectra_sqs),str(self.mix_score),str(self.spectra)]
     def as_no_id_tsv(self):
         return [
             self.file_name, # #SpecFile
@@ -147,8 +147,8 @@ with open(tsv_out_file, 'w') as tsv_out:
                     current_mgf.avg_spectra_sqs = line.replace("AVG_SPECTRUM_SQS=","").replace("\n","")
                 elif "PEPMASS" in line:
                     current_mgf.pepmass = line.replace("PEPMASS=","").replace("\n","")
-                elif "ASSIGNED_CHARGE" in line:
-                    current_mgf.assigned_charge = line.replace("ASSIGNED_CHARGE=","").replace("\n","")
+#                elif "ASSIGNED_CHARGE" in line:
+#                    current_mgf.assigned_charge = line.replace("ASSIGNED_CHARGE=","").replace("\n","")
                 elif "CHARGE" in line:
                     current_mgf.charge = line.replace("CHARGE=","").replace("\n","")
                 elif "SPECTRA" in line:

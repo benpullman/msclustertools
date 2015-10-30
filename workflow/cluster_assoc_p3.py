@@ -33,13 +33,14 @@ def process_final_result_mgf(output_mgf, phase1_result_mgf, clusters):
                         current_cluster_id = int(line.replace("TITLE=out_0_0.",""))
                         current_cluster = clusters[str(current_cluster_id)]
                     if "CHARGE" in line:
-                        current_cluster.charge = int(line.replace("CHARGE=","").replace("+",""))
-                        writefile.write("CHARGE=0+\n")
+                        #current_cluster.charge = int(line.replace("CHARGE=","").replace("+",""))
+                        #writefile.write("CHARGE=0+\n")
+                        pass
                     elif line[0].isdigit() and not is_ions:
                         is_ions = True
                         writefile.write('\n'.join([
                             'SCANS=' + str(current_cluster.scan_number),
-                            'ASSIGNED_CHARGE=' + str(current_cluster.charge),
+                            #'ASSIGNED_CHARGE=' + str(current_cluster.charge),
                             'CLUSTER_SQS=' + str(current_cluster.sqs),#cluster sqs
                             'AVG_SPECTRUM_SQS=' + str(current_cluster.avg_spectra_sqs()),#average spectrum sqs
                             'SPECTRA=' + str(','.join([

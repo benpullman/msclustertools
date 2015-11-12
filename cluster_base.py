@@ -39,13 +39,14 @@ class Cluster(SpectrumBase):
         self.spectra = spectra
         self.purity = purity
         self.consensus_peptide = consensus_peptide
-        self.sqs = 0
+        self.sqs = sqs
         self.spectrum_weights = self.set_spectrum_weights()
         self.ms_cluster_charge = ms_cluster_charge
         self.spec_prob = spec_prob
         self.p_value = p_value
         self.fdr = fdr
         self.pep_fdr = pep_fdr
+        self.of_split = 1
         super(Cluster, self).__init__(scan_number, file_id, precursor_mz, charge)
     def avg_spectra_sqs(self):
             output = 0.0
@@ -462,16 +463,17 @@ def initialize_from_proteosafe(clusters_file, spectra_file):
             new_cluster = Cluster(
                 scan_number = scan_number,
                 file_id = clust_split[0],
-                precursor_mz = clust_split[3],
+                precursor_mz = clust_split[4],
                 charge = int(clust_split[6].replace('+','')),
                 spectra = [],
                 purity = None,
                 consensus_peptide = clust_split[7],
                 ms_cluster_charge = clust_split[21],
                 spec_prob = clust_split[11],
-                p_value = clust_split[12],
-                fdr = clust_split[13],
-                pep_fdr = clust_split[14]
+                p_value = float(clust_split[12]),
+                fdr = float(clust_split[13]),
+                pep_fdr = float(clust_split[14]),
+                sqs = float(clust_split[18])
             )
             clusters[scan_number] = new_cluster
     with open(spectra_file, 'r') as spectrum_lines:
@@ -485,15 +487,35 @@ def initialize_from_proteosafe(clusters_file, spectra_file):
                 precursor_mz = spec_split[4],
                 charge = int(spec_split[6]),
                 similarity = None,
-                p_value = spec_split[12],
-                sqs = spec_split[16],
+                p_value = float(spec_split[12]),
+                sqs = float(spec_split[16]),
                 peptide = spec_split[7],
                 cluster_number = cluster_number,
-                spec_prob = spec_split[11],
-                fdr = spec_split[13],
-                pep_fdr = spec_split[14]
-            )
+                spec_prob = float(spec_split[11]),
+                fdr = float(spec_split[13]),
+                pep_fdr = float(spec_split[14])
+                )
             clusters[cluster_number].spectra.append(new_spectrum)
+    for cluster in clusters:
+        peptides = [
+            spectrum.peptide
+            for spectrum in clusters[cluster].spectra
+        ]
+        clusters[cluster].purity = purity_from_peptide_list(peptides)
+    all_peptides = [
+        clusters[cluster].consensus_peptide
+        for cluster in clusters
+    ]
+    grouped_and_sorted = {
+        key: len(list(value))
+        for key, value in groupby(sorted(all_peptides),key=lambda x: x)
+        if key != ''
+    }
+    for cluster in clusters:
+        try:
+            clusters[cluster].of_split = grouped_and_sorted[clusters[cluster].consensus_peptide]
+        except:
+            clusters[cluster].of_split = 0
     return clusters
 #
 # def load_to_pickle(cluster_folder, clusters_clusters_folder, identified_clusters,

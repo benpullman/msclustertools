@@ -32,10 +32,6 @@ def process_final_result_mgf(output_mgf, phase1_result_mgf, clusters):
                     if "TITLE" in line:
                         current_cluster_id = int(line.replace("TITLE=out_0_0.",""))
                         current_cluster = clusters[str(current_cluster_id)]
-                    if "CHARGE" in line:
-                        #current_cluster.charge = int(line.replace("CHARGE=","").replace("+",""))
-                        #writefile.write("CHARGE=0+\n")
-                        pass
                     elif line[0].isdigit() and not is_ions:
                         is_ions = True
                         writefile.write('\n'.join([

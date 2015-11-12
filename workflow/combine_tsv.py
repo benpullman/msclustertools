@@ -67,7 +67,7 @@ unclustered_lines, unclustered_header, unclustered_peptides = read_tsv_result_fi
 # print(unclustered_lines)
 
 if isClust:
-    modified_header = clustered_header.replace("\n","") + "\tCluster Size\tCluster Purity\tRepresentative Spectrum\tCluster SQS\tAverage Spectra SQS\tMix Score\tAssigned Charge\tSpectra"
+    modified_header = clustered_header.replace("\n","") + "\tCluster Size\tCluster Purity\tRepresentative Spectrum\tCluster SQS\tAverage Spectra SQS\tMix Score\tSpectra"
 else:
     modified_header = unclustered_header.replace("\n","") + "\tCluster\tSpectra SQS"
 

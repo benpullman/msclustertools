@@ -35,7 +35,8 @@ class Cluster(SpectrumBase):
 
     def __init__(self, scan_number, file_id, precursor_mz, charge, spectra,
                  purity, consensus_peptide, sqs = 0, ms_cluster_charge = None,
-                 spec_prob = None, p_value = None, fdr = None, pep_fdr = None):
+                 spec_prob = None, p_value = None, fdr = None, pep_fdr = None,
+                 peaks_at_k = None, top_peaks = None):
         self.spectra = spectra
         self.purity = purity
         self.consensus_peptide = consensus_peptide
@@ -47,6 +48,8 @@ class Cluster(SpectrumBase):
         self.fdr = fdr
         self.pep_fdr = pep_fdr
         self.of_split = 1
+        self.peaks_at_k = peaks_at_k
+        self.top_peaks = top_peaks
         super(Cluster, self).__init__(scan_number, file_id, precursor_mz, charge)
     def avg_spectra_sqs(self):
             output = 0.0
@@ -453,8 +456,9 @@ def find_cluster(clusters, cluster_id):
             break
     return found_cluster
 
-def initialize_from_proteosafe(clusters_file, spectra_file):
+def initialize_from_proteosafe(clusters_file, spectra_file, parameter_file):
     clusters = {}
+    file_name_map = swap(upload_file_mapping(params_xml=parameter_file))
     with open(clusters_file, 'r') as cluster_lines:
         cluster_lines.readline()
         for cluster_line in cluster_lines:
@@ -483,7 +487,7 @@ def initialize_from_proteosafe(clusters_file, spectra_file):
             cluster_number = spec_split[15]
             new_spectrum = Spectrum(
                 scan_number = spec_split[2],
-                file_id = spec_split[0],
+                file_id = file_name_map[spec_split[0]],
                 precursor_mz = spec_split[4],
                 charge = int(spec_split[6]),
                 similarity = None,

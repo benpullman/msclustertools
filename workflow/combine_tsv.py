@@ -78,7 +78,7 @@ def calculate_precursor_mix(cluster,peptides,tolerance):
     total = len(peptides)
     for peptide in peptides:
         for isotope in rep_isotopes:
-            if (isotope > (peptide.precursor_mz - tolerance_percent*peptide.precursor_mz) and isotope < (tolerance_percent*peptide.precursor_mz)):
+            if (peptide.precursor_mz > (isotope - tolerance_percent*isotope) and peptide.precursor_mz < (isotope + tolerance_percent*isotope)):
                 similar += 1
     return similar/total
 
@@ -122,7 +122,7 @@ unclustered_lines, unclustered_header, unclustered_peptides = read_tsv_result_fi
 # print(unclustered_lines)
 
 if isClust:
-    modified_header = clustered_header.replace("\n","") + "\tCluster Size\tCluster Purity\tRepresentative Spectrum\tCluster SQS\tAverage Spectra SQS\tMix Score\tSpectra"
+    modified_header = clustered_header.replace("\n","") + "\tCluster Size\tCluster Purity\tRepresentative Spectrum\tCluster SQS\tAverage Spectra SQS\tMix Score\tSpectra\tPrecursor Mix"
 else:
     modified_header = unclustered_header.replace("\n","") + "\tCluster\tSpectra SQS"
 
@@ -238,7 +238,7 @@ with open(tsv_out_file, 'w') as tsv_out:
                     if isClust:
                         current_mgf.purity = cluster_base.purity_from_peptide_list(peptides)
                         current_mgf.mix_score = cluster_base.mix_score(spectra)
-                        alt_mixture = calculate_precursor_mix(current_mgf, peptides, )
+                        alt_mixture = calculate_precursor_mix(current_mgf, peptides, 30)
                         current_mgf.precursor_mix = alt_mixture
                         tsv_start_clustered = clustered_lines.get(os.path.split(mgf_file_name)[1] + ":" + str(index),current_mgf.as_no_id_tsv())
                         output_clustered = tsv_start_clustered + current_mgf.as_array()

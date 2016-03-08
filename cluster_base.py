@@ -3,6 +3,7 @@ import glob
 import os
 import bisect
 from itertools import groupby
+import math
 
 class SpectrumBase(object):
 
@@ -72,6 +73,26 @@ class Cluster(SpectrumBase):
             spectrum.charge
             for spectrum in self.spectra
         ][0]
+    def mean_kl(self):
+        spec_kl = [
+            spectrum.kl_strict
+            for spectrum in self.spectra
+            if spectrum.kl_strict
+        ]
+        try:
+            return sum(spec_kl)/len(spec_kl)
+        except:
+            return None
+    def max_kl(self):
+        spec_kl = [
+            spectrum.kl_strict
+            for spectrum in self.spectra
+            if spectrum.kl_strict
+        ]
+        try:
+            return max(spec_kl)
+        except:
+            return None
 
 
 class Spectrum(SpectrumBase):
@@ -80,7 +101,7 @@ class Spectrum(SpectrumBase):
 
     def __init__(self, scan_number, file_id, precursor_mz, charge, similarity,
                  p_value, sqs, peptide, cluster_number = None, spec_prob = None,
-                 fdr = None, pep_fdr = None):
+                 fdr = None, pep_fdr = None, kl_strict = None, kl_non_strict = None, kl_delta = None):
         self.similarity = similarity
         self.p_value = p_value
         self.sqs = sqs
@@ -89,6 +110,9 @@ class Spectrum(SpectrumBase):
         self.spec_prob = spec_prob
         self.fdr = fdr
         self.pep_fdr = pep_fdr
+        self.kl_strict = kl_strict
+        self.kl_non_strict = kl_non_strict
+        self.kl_delta = kl_delta
         super(Spectrum, self).__init__(scan_number, file_id, precursor_mz, charge)
     def output_pair(self):
         return str(self.file_id) + ":" + str(self.scan_number) + ":" + str(self.sqs) + ":" + str(self.charge) + ":" + str(self.precursor_mz)
@@ -456,7 +480,7 @@ def find_cluster(clusters, cluster_id):
             break
     return found_cluster
 
-def initialize_from_proteosafe(clusters_file, spectra_file, parameter_file):
+def initialize_from_proteosafe(clusters_file, spectra_file, parameter_file, kl_file):
     clusters = {}
     file_name_map = swap(upload_file_mapping(params_xml=parameter_file))
     with open(clusters_file, 'r') as cluster_lines:
@@ -464,11 +488,16 @@ def initialize_from_proteosafe(clusters_file, spectra_file, parameter_file):
         for cluster_line in cluster_lines:
             clust_split = cluster_line.split('\t')
             scan_number = clust_split[2]
+            charge  = 0
+            try:
+                charge = int(clust_split[6].replace('+',''))
+            except:
+                charge = int(clust_split[6].replace('+','').split('_')[1])
             new_cluster = Cluster(
                 scan_number = scan_number,
                 file_id = clust_split[0],
                 precursor_mz = clust_split[4],
-                charge = int(clust_split[6].replace('+','')),
+                charge = charge,
                 spectra = [],
                 purity = None,
                 consensus_peptide = clust_split[7],
@@ -480,16 +509,46 @@ def initialize_from_proteosafe(clusters_file, spectra_file, parameter_file):
                 sqs = float(clust_split[18])
             )
             clusters[scan_number] = new_cluster
+    strict = {}
+    non_strict = {}
+    for filename in glob.glob(kl_file + "/*.csv"):
+        with open(filename) as f:
+            for line in f:
+                split_line = line.split(",")
+                scan_file = os.path.basename(split_line[0]).split(".")[0]
+                try:
+                    scan_number = split_line[1].replace(" ","")
+                except:
+                    print(line)
+                try:
+                    kl = float(split_line[6])
+                except:
+                    print(line)
+                if "_t" in filename:
+                    strict[scan_file + ":" + scan_number] = kl
+                else:
+                    non_strict[scan_file + ":" + scan_number] = kl
     with open(spectra_file, 'r') as spectrum_lines:
         spectrum_lines.readline()
         for spectrum_line in spectrum_lines:
             spec_split = spectrum_line.split('\t')
             cluster_number = spec_split[15]
+            scan_number = spec_split[2]
+            file_id = file_name_map[spec_split[0]]
+            try:
+                charge = int(spec_split[6])
+            except:
+                charge = int(spec_split[6].split('_')[1])
+            kl_strict = strict.get(file_id.split(".")[0] + ":" + scan_number)
+            kl_non_strict = non_strict.get(file_id.split(".")[0] + ":" + scan_number)
+            kl_delta = None
+            if kl_strict and kl_non_strict:
+                kl_delta = math.log(kl_strict/kl_non_strict);
             new_spectrum = Spectrum(
-                scan_number = spec_split[2],
-                file_id = file_name_map[spec_split[0]],
+                scan_number = scan_number,
+                file_id = file_id,
                 precursor_mz = spec_split[4],
-                charge = int(spec_split[6]),
+                charge = charge,
                 similarity = None,
                 p_value = float(spec_split[12]),
                 sqs = float(spec_split[16]),
@@ -497,7 +556,10 @@ def initialize_from_proteosafe(clusters_file, spectra_file, parameter_file):
                 cluster_number = cluster_number,
                 spec_prob = float(spec_split[11]),
                 fdr = float(spec_split[13]),
-                pep_fdr = float(spec_split[14])
+                pep_fdr = float(spec_split[14]),
+                kl_strict = kl_strict,
+                kl_non_strict = kl_non_strict,
+                kl_delta = kl_delta
                 )
             clusters[cluster_number].spectra.append(new_spectrum)
     for cluster in clusters:

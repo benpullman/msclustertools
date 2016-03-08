@@ -39,11 +39,12 @@ class TableSession(object):
                     new_table[r][c] = str_percent(new_total/num_total)
                     item_set = item_set - column_set
         return HTML(tabulate(new_table,self.x.table_header(),tablefmt="html"))
-    def inspect(self, x_insp, y_insp, n = 5, all_values = False):
+    def inspect(self, x_insp, y_insp, filter_func = lambda x: x, n = 5, all_values = False):
         t = table_data(self.clusters, self.x, self.y, lambda x: x)
         values = [
             cluster.scan_number
             for cluster in t[y_insp][x_insp+1]
+            if filter_func(cluster)
         ]
         if not all_values:
             return HTML('&nbsp;&nbsp;&nbsp;'.join([cluster_number_url(value,self.proteosafe_id) for value in values[:n]]))
@@ -67,7 +68,7 @@ def inspect(table, x, y):
     ]
 
 def cluster_number_url(cluster_number, proteosafe_id):
-    cluster_url1 = "http://ccms-dev1.ucsd.edu/ProteoSAFe/result.jsp?task="
+    cluster_url1 = "http://proteomics2.ucsd.edu/ProteoSAFe/result.jsp?task="
     cluster_url2 = "&view=group_by_spectrum_old_clustered#%7B%22table_sort_history%22%3A%22SpecProb_dsc%3BSpecProb_asc%3BSpecProb_dsc%22%2C%22Scan%23_lowerinput%22%3A%22"
     cluster_url3 = "%22%2C%22Scan%23_upperinput%22%3A%22"
     cluster_url4 = "%22%7D"

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import sys
-import cluster_base
+#import cluster_base
 import glob
 import os
 

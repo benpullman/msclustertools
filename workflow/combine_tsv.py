@@ -27,9 +27,8 @@ parameters = cluster_base.parse_xml_file(params)
 #         self.charge = charge
 #         self.precursor_mz = precursor_mz
 
-
 h_ion = 1.007825035
-
+mass_mh = 18.010564686 + h_ion
 aa_weights = {
     'A':71.037113787,
     'R':156.101111026,
@@ -54,14 +53,17 @@ aa_weights = {
 }
 
 def extract_middle(peptide_string):
-    return peptide_string.rsplit(".",1)[0].split(".",1)[1]
+    first_letter = peptide_string.split(".",1)[0]
+    last_letter = peptide_string.rsplit(".",1)[1]
+    return ''.join([peptide_string.rsplit(".",1)[0].split(".",1)[1]])
 
 def calculate_mass(peptide_string, charge):
     stripped = extract_middle(peptide_string)
     weights = [aa_weights[aa] for aa in stripped if aa.isalpha()]
+    print([aa for aa in stripped if aa.isalpha()])
+    print(sum(weights)+mass_mh)
     mods = [float(mod) for mod in ''.join([aa for aa in stripped if not aa.isalpha()]).split('+') if mod != '']
-    print(sum(weights))
-    return (sum(weights) + sum(mods) + (charge-1)*h_ion)/charge
+    return (sum(weights) + sum(mods) + (charge-1)*h_ion + mass_mh)/charge
 
 def isotopes(peptide_string,charge,n=4):
     peptide_mass = calculate_mass(peptide_string, charge)
@@ -73,15 +75,19 @@ def isotopes(peptide_string,charge,n=4):
 def calculate_precursor_mix(cluster,spectra,tolerance):
     tolerance_percent = tolerance/1000000
     pep_rep = cluster.purity.representative_spectrum
-    rep_isotopes = isotopes(pep_rep,cluster.charge)
-    similar = 0
-    total = len(spectra)
-    for spectrum in spectra:
-        for isotope in rep_isotopes:
-            if (spectrum.precursor_mz > (isotope - tolerance_percent*isotope) and spectrum.precursor_mz < (isotope + tolerance_percent*isotope)):
-                similar += 1
-    return similar/total
-
+    mix = 0
+    if pep_rep != 'PEPTIDE':
+        rep_isotopes = isotopes(pep_rep,cluster.charge)
+        similar = 0
+        total = len(spectra)
+        for spectrum in spectra:
+            for isotope in rep_isotopes:
+                print(isotope)
+                print(float(spectrum.precursor_mz))
+                if (float(spectrum.precursor_mz) > (isotope - tolerance_percent*isotope) and float(spectrum.precursor_mz) < (isotope + tolerance_percent*isotope)):
+                    similar += 1
+        mix = similar/total
+    return mix
 
 def parseSpectra(cluster, spectra_string):
     spectra_list = []

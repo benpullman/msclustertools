@@ -28,6 +28,61 @@ parameters = cluster_base.parse_xml_file(params)
 #         self.precursor_mz = precursor_mz
 
 
+h_ion = 1.007825035
+
+aa_weights = {
+    'A':71.037113787,
+    'R':156.101111026,
+    'D':115.026943031,
+    'N':114.042927446,
+    'C':160.030648200,
+    'E':129.042593095,
+    'Q':128.058577510,
+    'G':57.021463723,
+    'H':137.058911861,
+    'I':113.084063979,
+    'L':113.084063979,
+    'K':128.094963016,
+    'M':131.040484605,
+    'F':147.068413915,
+    'P':97.052763851,
+    'S':87.032028409,
+    'T':101.047678473,
+    'W':186.079312952,
+    'Y':163.063328537,
+    'V':99.068413915
+}
+
+def extract_middle(peptide_string):
+    return peptide_string.rsplit(".",1)[0].split(".",1)[1]
+
+def calculate_mass(peptide_string, charge):
+    stripped = extract_middle(peptide_string)
+    weights = [aa_weights[aa] for aa in stripped if aa.isalpha()]
+    mods = [float(mod) for mod in ''.join([aa for aa in stripped if not aa.isalpha()]).split('+') if mod != '']
+    print(sum(weights))
+    return (sum(weights) + sum(mods) + (charge-1)*h_ion)/charge
+
+def isotopes(peptide_string,charge,n=4):
+    peptide_mass = calculate_mass(peptide_string, charge)
+    return [
+        peptide_mass + i*(1/charge)
+        for i in range(0,n+1)
+    ]
+
+def calculate_precursor_mix(cluster,peptides,tolerance):
+    tolerance_percent = tolerance/1000000
+    pep_rep = cluster.purity.representative_spectrum
+    rep_isotopes = isotopes(pep_rep,cluster.charge)
+    similar = 0
+    total = len(peptides)
+    for peptide in peptides:
+        for isotope in rep_isotopes:
+            if (isotope > (peptide.precursor_mz - tolerance_percent*peptide.precursor_mz) and isotope < (tolerance_percent*peptide.precursor_mz)):
+                similar += 1
+    return similar/total
+
+
 def parseSpectra(cluster, spectra_string):
     spectra_list = []
     spectra = spectra_string.split(",")
@@ -85,9 +140,10 @@ class parseMGF(object):
         self.cluster_size = None
         self.purity = None
         self.mix_score = None
+        self.precursor_mix = None
         #self.assigned_charge = None
     def as_array(self):
-        return [str(self.cluster_size), str(self.purity.purity_no_undentified), str(self.purity.representative_spectrum), str(self.cluster_sqs),str(self.avg_spectra_sqs),str(self.mix_score),str(self.spectra)]
+        return [str(self.cluster_size), str(self.purity.purity_no_undentified), str(self.purity.representative_spectrum), str(self.cluster_sqs),str(self.avg_spectra_sqs),str(self.mix_score),str(self.spectra),str(self.precursor_mix)]
     def as_no_id_tsv(self):
         return [
             self.file_name, # #SpecFile
@@ -182,6 +238,8 @@ with open(tsv_out_file, 'w') as tsv_out:
                     if isClust:
                         current_mgf.purity = cluster_base.purity_from_peptide_list(peptides)
                         current_mgf.mix_score = cluster_base.mix_score(spectra)
+                        alt_mixture = calculate_precursor_mix(current_mgf, peptides, )
+                        current_mgf.precursor_mix = alt_mixture
                         tsv_start_clustered = clustered_lines.get(os.path.split(mgf_file_name)[1] + ":" + str(index),current_mgf.as_no_id_tsv())
                         output_clustered = tsv_start_clustered + current_mgf.as_array()
                         tsv_out.write('\t'.join(output_clustered) + '\n')

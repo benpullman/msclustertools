@@ -74,7 +74,7 @@ def calculate_precursor_mix(cluster,spectra,tolerance):
     pep_rep = cluster.purity.representative_spectrum
     mix = 0
     if pep_rep != 'PEPTIDE':
-        rep_isotopes = isotopes(pep_rep,cluster.charge)
+        rep_isotopes = isotopes(pep_rep,int(cluster.charge))
         similar = 0
         total = len(spectra)
         for spectrum in spectra:

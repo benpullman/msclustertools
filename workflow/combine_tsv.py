@@ -26,7 +26,6 @@ parameters = cluster_base.parse_xml_file(params)
 #         self.sqs = sqs
 #         self.charge = charge
 #         self.precursor_mz = precursor_mz
-
 h_ion = 1.007825035
 mass_mh = 18.010564686 + h_ion
 aa_weights = {
@@ -60,8 +59,6 @@ def extract_middle(peptide_string):
 def calculate_mass(peptide_string, charge):
     stripped = extract_middle(peptide_string)
     weights = [aa_weights[aa] for aa in stripped if aa.isalpha()]
-    print([aa for aa in stripped if aa.isalpha()])
-    print(sum(weights)+mass_mh)
     mods = [float(mod) for mod in ''.join([aa for aa in stripped if not aa.isalpha()]).split('+') if mod != '']
     return (sum(weights) + sum(mods) + (charge-1)*h_ion + mass_mh)/charge
 
@@ -82,8 +79,6 @@ def calculate_precursor_mix(cluster,spectra,tolerance):
         total = len(spectra)
         for spectrum in spectra:
             for isotope in rep_isotopes:
-                print(isotope)
-                print(float(spectrum.precursor_mz))
                 if (float(spectrum.precursor_mz) > (isotope - tolerance_percent*isotope) and float(spectrum.precursor_mz) < (isotope + tolerance_percent*isotope)):
                     similar += 1
         mix = similar/total

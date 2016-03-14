@@ -61,23 +61,24 @@ def calculate_mass(peptide_string, charge):
 def isotopes(peptide_string,charge,n=4):
     peptide_mass = calculate_mass(peptide_string, charge)
     return [
-        peptide_mass + float(i)*(1/float(charge))
+        peptide_mass + float(i)*(float(1)/charge)
         for i in range(0,n+1)
     ]
 
 def calculate_precursor_mix(cluster,spectra,tolerance):
     mix = 0
     tolerance_percent = float(tolerance)/1000000
-    charge = 1
+    charge = 0
     pep_rep = cluster.purity.representative_spectrum
     for spectrum in spectra:
         try:
             spec_id = spectrum.file_id + ":" + spectrum.scan_number
             if unclustered_peptides[spec_id] == pep_rep:
                 charge = spectrum.charge
-                break
         except:
             pass
+        if charge != 0:
+            break
     monoisotopic_mass = 0
     if pep_rep != 'PEPTIDE' and pep_rep !='':
         rep_isotopes = isotopes(pep_rep,int(charge))
@@ -165,7 +166,7 @@ class parseMGF(object):
             str(self.pepmass), # Precursor
             "0", # PMError(ppm)
             str(self.charge), # Charge
-            "", # Peptide
+            "PEPTIDE", # Peptide
             "",# Protein
             "0", # DeNovoScore
             "0", # MSGFScore
@@ -183,7 +184,7 @@ class parseMGF(object):
             str(precursor_mz), # Precursor
             "0", # PMError(ppm)
             str(charge), # Charge
-            "", # Peptide
+            "PEPTIDE", # Peptide
             "",# Protein
             "0", # DeNovoScore
             "0", # MSGFScore

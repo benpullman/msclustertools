@@ -14,8 +14,6 @@ else:
 
 file_id_col = 2
 
-print(str(sys.argv))
-
 isClust = clustOrSpec=="--clust"
 parameters = cluster_base.parse_xml_file(params)
 # class MiniSpectrum(object):
@@ -52,8 +50,6 @@ aa_weights = {
 }
 
 def extract_middle(peptide_string):
-    first_letter = peptide_string.split(".",1)[0]
-    last_letter = peptide_string.rsplit(".",1)[1]
     return ''.join([peptide_string.rsplit(".",1)[0].split(".",1)[1]])
 
 def calculate_mass(peptide_string, charge):
@@ -65,24 +61,38 @@ def calculate_mass(peptide_string, charge):
 def isotopes(peptide_string,charge,n=4):
     peptide_mass = calculate_mass(peptide_string, charge)
     return [
-        peptide_mass + i*(1/charge)
+        peptide_mass + float(i)*(1/float(charge))
         for i in range(0,n+1)
     ]
 
 def calculate_precursor_mix(cluster,spectra,tolerance):
-    tolerance_percent = tolerance/1000000
-    pep_rep = cluster.purity.representative_spectrum
     mix = 0
-    if pep_rep != 'PEPTIDE':
-        rep_isotopes = isotopes(pep_rep,int(cluster.charge))
+    tolerance_percent = float(tolerance)/1000000
+    charge = 1
+    pep_rep = cluster.purity.representative_spectrum
+    for spectrum in spectra:
+        try:
+            spec_id = spectrum.file_id + ":" + spectrum.scan_number
+            if unclustered_peptides[spec_id] == pep_rep:
+                charge = spectrum.charge
+                break
+        except:
+            pass
+    monoisotopic_mass = 0
+    if pep_rep != 'PEPTIDE' and pep_rep !='':
+        rep_isotopes = isotopes(pep_rep,int(charge))
+        monoisotopic_mass = rep_isotopes[0]
         similar = 0
         total = len(spectra)
         for spectrum in spectra:
             for isotope in rep_isotopes:
+                # print(float(spectrum.precursor_mz))
+                # print(isotope)
                 if (float(spectrum.precursor_mz) > (isotope - tolerance_percent*isotope) and float(spectrum.precursor_mz) < (isotope + tolerance_percent*isotope)):
                     similar += 1
-        mix = similar/total
-    return mix
+                    break
+        mix = float(similar)/float(total)
+    return mix,monoisotopic_mass
 
 def parseSpectra(cluster, spectra_string):
     spectra_list = []
@@ -123,7 +133,7 @@ unclustered_lines, unclustered_header, unclustered_peptides = read_tsv_result_fi
 # print(unclustered_lines)
 
 if isClust:
-    modified_header = clustered_header.replace("\n","") + "\tCluster Size\tCluster Purity\tRepresentative Spectrum\tCluster SQS\tAverage Spectra SQS\tMix Score\tSpectra\tPrecursor Mix"
+    modified_header = clustered_header.replace("\n","") + "\tCluster Size\tCluster Purity\tRepresentative Spectrum\tCluster SQS\tAverage Spectra SQS\tMix Score\tSpectra\tPrecursor Mix\tTheoretical Mass"
 else:
     modified_header = unclustered_header.replace("\n","") + "\tCluster\tSpectra SQS"
 
@@ -142,9 +152,10 @@ class parseMGF(object):
         self.purity = None
         self.mix_score = None
         self.precursor_mix = None
+        self.monoisotopic_mass = None
         #self.assigned_charge = None
     def as_array(self):
-        return [str(self.cluster_size), str(self.purity.purity_no_undentified), str(self.purity.representative_spectrum), str(self.cluster_sqs),str(self.avg_spectra_sqs),str(self.mix_score),str(self.spectra),str(self.precursor_mix)]
+        return [str(self.cluster_size), str(self.purity.purity_no_undentified), str(self.purity.representative_spectrum), str(self.cluster_sqs),str(self.avg_spectra_sqs),str(self.mix_score),str(self.spectra),str(self.precursor_mix),str(self.monoisotopic_mass)]
     def as_no_id_tsv(self):
         return [
             self.file_name, # #SpecFile
@@ -186,7 +197,6 @@ class parseMGF(object):
 mgf = []
 mgf_files = glob.glob(clust_in + "/*.mgf")
 server_file_name = cluster_base.upload_file_mapping(params = parameters)
-print("server_file_name: " + str(server_file_name))
 server_file_name_swap = cluster_base.swap(server_file_name)
 with open(tsv_out_file, 'w') as tsv_out:
     tsv_out.write(modified_header + "\n")
@@ -239,8 +249,9 @@ with open(tsv_out_file, 'w') as tsv_out:
                     if isClust:
                         current_mgf.purity = cluster_base.purity_from_peptide_list(peptides)
                         current_mgf.mix_score = cluster_base.mix_score(spectra)
-                        alt_mixture = calculate_precursor_mix(current_mgf, spectra, 30)
+                        alt_mixture, monoisotopic_mass = calculate_precursor_mix(current_mgf, spectra, 30)
                         current_mgf.precursor_mix = alt_mixture
+                        current_mgf.monoisotopic_mass = monoisotopic_mass
                         tsv_start_clustered = clustered_lines.get(os.path.split(mgf_file_name)[1] + ":" + str(index),current_mgf.as_no_id_tsv())
                         output_clustered = tsv_start_clustered + current_mgf.as_array()
                         tsv_out.write('\t'.join(output_clustered) + '\n')

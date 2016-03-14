@@ -74,7 +74,7 @@ def calculate_precursor_mix(cluster,spectra,tolerance):
         try:
             spec_id = spectrum.file_id + ":" + spectrum.scan_number
             if unclustered_peptides[spec_id] == pep_rep:
-                charge = spectrum.charge
+                charge = unclustered_charges[spec_id]
         except:
             pass
         if charge != 0:
@@ -112,6 +112,7 @@ def read_tsv_result_file(tsv_file_name, tsv_file_id_col, is_cluster):
     header = ""
     tsv_lines = {}
     peptides = {}
+    charges = {}
     with open(tsv_file_name, 'r') as tsv_file:
         header = tsv_file.readline()
         for line in tsv_file:
@@ -119,17 +120,19 @@ def read_tsv_result_file(tsv_file_name, tsv_file_id_col, is_cluster):
             scan_number = int(split_line[tsv_file_id_col])
             peptide = split_line[7]
             file_name = split_line[0]
+            charge = int(split_line[6].replace('+',''))
             if is_cluster:
                 id_for_dict = file_name + ":" + str(scan_number)
             else:
                 id_for_dict = file_name + ":" + str(scan_number)
                 peptides[id_for_dict] = peptide
+                charges[id_for_dict] = charge
                 # print(id_for_dict)
             tsv_lines[id_for_dict] = split_line
-    return tsv_lines, header, peptides
+    return tsv_lines, header, peptides, charges
 
-clustered_lines, clustered_header, clustered_peptides = read_tsv_result_file(tsv_clust_in, 1, True)
-unclustered_lines, unclustered_header, unclustered_peptides = read_tsv_result_file(tsv_spec_in, 2, False)
+clustered_lines, clustered_header, clustered_peptides, clustered_charges = read_tsv_result_file(tsv_clust_in, 1, True)
+unclustered_lines, unclustered_header, unclustered_peptides, unclustered_charges = read_tsv_result_file(tsv_spec_in, 2, False)
 
 # print(unclustered_lines)
 
